@@ -1,29 +1,17 @@
-import { useEffect, useState } from "react";
-import { Button, ConfigProvider, Layout, Typography, theme } from "antd";
-import { ApiOutlined } from "@ant-design/icons";
-import { fetchOverview } from "./api/client";
+import { useState } from "react";
+import { ConfigProvider, Layout, Tabs, Typography, theme } from "antd";
+import { CompassOutlined, TrophyOutlined } from "@ant-design/icons";
 import { APP_CODE, APP_NAME, APP_THEME } from "./constants/app";
-import { REQUEST_MESSAGES } from "./constants/messages";
-import { createFallbackOverview } from "./state/dashboard";
-import type { OverviewResponse } from "./types";
-import { FeatureStrip } from "./components/FeatureStrip";
-import { MetricGrid } from "./components/MetricGrid";
-import { OperationsTable } from "./components/OperationsTable";
+import { CoursesPage } from "./components/CoursesPage";
+import { LeaderboardPage } from "./components/LeaderboardPage";
 
 const { Header, Content } = Layout;
 
-export default function App() {
-  const [overview, setOverview] = useState<OverviewResponse>(createFallbackOverview());
-  const [notice, setNotice] = useState(REQUEST_MESSAGES.overviewFallback);
+type PageKey = "courses" | "leaderboard";
 
-  useEffect(() => {
-    fetchOverview()
-      .then((payload) => {
-        setOverview(payload);
-        setNotice("后端服务已联通，当前展示实时接口数据。");
-      })
-      .catch(() => setNotice(REQUEST_MESSAGES.overviewFallback));
-  }, []);
+export default function App() {
+  const [page, setPage] = useState<PageKey>("courses");
+  const [selectedCourseId, setSelectedCourseId] = useState<number | null>(null);
 
   return (
     <ConfigProvider
@@ -43,22 +31,48 @@ export default function App() {
             <span className="brand-code">{APP_CODE}</span>
             <h1 className="brand-title">{APP_NAME}</h1>
           </div>
-          <Button type="primary" icon={<ApiOutlined />} href={REQUEST_MESSAGES.healthPath}>API Health</Button>
+          <Typography.Text className="topbar-sub">
+            团队报名 · 名额抢占 · 打卡计时 · 实时排名
+          </Typography.Text>
         </Header>
         <Content className="workspace">
-          <section className="lead-grid">
-            <article className="hero-panel">
-              <span className="pill">{notice}</span>
-              <Typography.Title level={2}>{overview.appName}</Typography.Title>
-              <p>{overview.description}</p>
-            </article>
-            <MetricGrid items={overview.kpis} />
-          </section>
-          <FeatureStrip items={overview.features} />
-          <section className="work-panel">
-            <Typography.Title level={3}>运营任务流</Typography.Title>
-            <OperationsTable records={overview.records} />
-          </section>
+          <Tabs
+            className="page-tabs"
+            activeKey={page}
+            onChange={(key) => setPage(key as PageKey)}
+            items={[
+              {
+                key: "courses",
+                label: (
+                  <span>
+                    <CompassOutlined /> 线路与报名
+                  </span>
+                ),
+                children: (
+                  <CoursesPage
+                    onViewLeaderboard={(courseId) => {
+                      setSelectedCourseId(courseId);
+                      setPage("leaderboard");
+                    }}
+                  />
+                ),
+              },
+              {
+                key: "leaderboard",
+                label: (
+                  <span>
+                    <TrophyOutlined /> 实时排名
+                  </span>
+                ),
+                children: (
+                  <LeaderboardPage
+                    selectedCourseId={selectedCourseId}
+                    onSelectCourse={setSelectedCourseId}
+                  />
+                ),
+              },
+            ]}
+          />
         </Content>
       </Layout>
     </ConfigProvider>

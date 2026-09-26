@@ -19,11 +19,25 @@ docker compose up -d
 
 ## 项目主要功能
 
-- 活动线路设计与发布：管理员在地图上标记起点、终点和打卡点（CP点），设置各点线索和任务，发布活动时注明难度（亲子/成人/专业）、时长和装备要求。
-- 线索打卡点（GPS/二维码）：参与者到达打卡点附近（GPS定位）或扫描二维码完成打卡，系统记录到达时间，打卡点可设置答题或拍照任务增加趣味性。
-- 团队报名与排名：用户以个人或团队形式报名，活动开始后系统记录各团队完成所有打卡点的总用时，按用时排名生成实时 leaderboard。
-- 积分兑换商城：参与活动获得积分，积分可在商城兑换户外装备、活动优惠券或虚拟勋章，激励用户持续参与。
-- 历史线路收藏：用户可收藏感兴趣的已结束活动线路，查看其他参与者的成绩和路线轨迹，为下次报名提供参考。
+- **线路发布与名额管理**：每条线路设置队伍名额、难度（亲子/成人/专业）、报名截止时间与若干检查点（CP 点），页面实时展示已报名数与剩余名额。
+- **团队报名**：个人可以单独成队，也可以和他人组队报名；同一人在同一线路只能属于一支队伍。截止时间过后或赛事开始后停止报名。
+- **并发报名控制**：报名在数据库事务内对线路加行级锁并配合唯一约束，抢最后一个名额或多支队伍同时提交同一成员时，只有一支队伍报名成功，失败方收到「名额已满」或「成员冲突」提示，不会出现超卖或重复队员。
+- **打卡计时**：赛事开始后，各队按检查点编码打卡，系统记录每个 CP 的到达时间；重复打卡与未开赛打卡会被拒绝。
+- **实时排名榜**：走完全部检查点的队伍按总用时（首次打卡到末次打卡）升序进入总用时榜；缺卡（尚未走完）的队伍单独显示为「进行中」并展示打卡进度。排名页每 10 秒自动刷新。
+- **数据持久化**：报名、队伍、打卡成绩均存于 PostgreSQL 命名卷，后端容器重启后记录仍在；首次启动自动迁移并写入三条演示线路。
+
+## API 一览
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/courses` | 线路列表（含余位、难度、截止时间、检查点数量） |
+| GET | `/api/courses/{id}` | 线路详情（含全部检查点） |
+| POST | `/api/courses/{id}/register` | 报名（个人省略 `members`；组队传队员姓名数组） |
+| POST | `/api/courses/{id}/start` | 开始赛事（开赛后停止报名、开放打卡） |
+| POST | `/api/teams/{id}/punch` | 队伍打卡，请求体 `{"checkpointCode": "PRO-01"}` |
+| GET | `/api/courses/{id}/leaderboard` | 总用时榜 + 缺卡进行中名单 |
+
+业务失败统一返回 `409/404` 与 `{"code": "...", "message": "..."}`，常见 code：`capacity_full`（名额已满）、`member_conflict`（成员冲突）、`registration_closed`（报名截止）、`race_started`（赛事已开始）、`duplicate_punch`（重复打卡）。
 
 ## 本地开发方式
 
@@ -57,11 +71,25 @@ python manage.py runserver 0.0.0.0:29519
 
 ```text
 .
-├── backend/              # 后端服务
-├── database/             # 数据库脚本
-├── frontend/             # 前端应用
-├── docker-compose.yml    # 一键部署编排
-├── .env.example          # 环境变量示例
+├── backend/                  # 后端服务
+│   ├── config/               # Django 项目配置（settings/urls/wsgi）
+│   ├── domain/               # 赛事业务域
+│   │   ├── models.py         # Course/Checkpoint/Team/TeamMember/CourseMembership/Punch
+│   │   ├── services.py       # 报名事务、打卡、排名计算
+│   │   ├── views.py          # HTTP 接口
+│   │   └── migrations/       # 建表迁移 + 演示数据种子
+│   ├── entrypoint.sh         # 容器启动时自动 migrate 再启动 gunicorn
+│   └── manage.py
+├── database/                 # 数据库结构参考 SQL（建表以迁移为准）
+├── frontend/                 # 前端应用
+│   └── src/
+│       ├── api/              # 接口请求封装
+│       ├── components/       # 线路报名页、排名页、报名弹窗
+│       ├── constants/        # 常量与提示文案
+│       ├── routes/ styles/ types/
+│       └── App.tsx
+├── docker-compose.yml        # 一键部署编排
+├── .env.example              # 环境变量示例
 └── README.md
 ```
 
@@ -78,6 +106,7 @@ python manage.py runserver 0.0.0.0:29519
 | FRONTEND_PORT | 前端宿主机端口 | 28519 |
 | BACKEND_PORT | 后端宿主机端口 | 29519 |
 | DB_PORT | 数据库宿主机端口 | 5432 |
+| GUNICORN_WORKERS | 后端 Gunicorn 工作进程数 | 3 |
 
 ## Docker 部署说明
 

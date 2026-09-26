@@ -8,7 +8,7 @@ ALLOWED_HOSTS = ["*"]
 
 INSTALLED_APPS = [
     "rest_framework",
-    "domain",
+    "domain.apps.DomainConfig",
 ]
 
 MIDDLEWARE = [
@@ -19,6 +19,10 @@ MIDDLEWARE = [
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+TIME_ZONE = "Asia/Shanghai"
+USE_TZ = True
+LANGUAGE_CODE = "zh-hans"
 
 if os.getenv("DB_HOST"):
     DATABASES = {
@@ -36,6 +40,12 @@ else:
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
+            "OPTIONS": {
+                # 写事务立即申请 RESERVED 锁并排队等待，模拟 PostgreSQL 行锁
+                # 的串行化效果，避免并发报名时 SQLite 锁升级死锁
+                "transaction_mode": "IMMEDIATE",
+                "timeout": 20,
+            },
         }
     }
 

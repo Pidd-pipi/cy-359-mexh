@@ -1,5 +1,4 @@
 export const routes = [
-  { path: "/", label: "运营总览" },
-  { path: "/resources", label: "资源管理" },
-  { path: "/analytics", label: "数据分析" },
+  { path: "/", label: "线路与报名" },
+  { path: "/leaderboard", label: "实时排名" },
 ];

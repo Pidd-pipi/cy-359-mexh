@@ -137,6 +137,29 @@ body {
   padding: 22px;
 }
 
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.nav-menu {
+  flex: 1;
+  min-width: 220px;
+  background: transparent;
+  border-bottom: none;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;

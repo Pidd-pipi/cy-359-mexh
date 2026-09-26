@@ -12,3 +12,6 @@ backend/**/*.pyc
 coverage/
 .pytest_cache/
 *.class
+*.sqlite3
+*.tsbuildinfo
+__pycache__/
